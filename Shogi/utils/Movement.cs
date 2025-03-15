@@ -1,5 +1,6 @@
-using System.Numerics;
+
 using Microsoft.VisualBasic;
+using Microsoft.Xna.Framework;
 
 namespace Shogi.Utils
 {
@@ -14,6 +15,8 @@ namespace Shogi.Utils
         public static readonly Vector2 ForwardLeft = Forward + Left;
         public static readonly Vector2 BackwardRight = Backward + Right;
         public static readonly Vector2 BackwardLeft = Backward + Left;
+        public static readonly Vector2 KnightRight = new(1, -2);
+        public static readonly Vector2 KnightLeft = new(-1, -2);
 
         public Vector2 Direction { get; private set; }
         public int Repetitions { get; private set; }

@@ -12,7 +12,7 @@ namespace Shogi
 {
     public class ShogiGame : Game
     {
-        private static string _language = JAP;
+        private static string _language = ENG;
         public static string GameLanguage
         {
             get { return _language; }
@@ -81,7 +81,6 @@ namespace Shogi
         protected override void Draw(GameTime gameTime)
         {
             boardRenderer.Draw();
-
             base.Draw(gameTime);
         }
 

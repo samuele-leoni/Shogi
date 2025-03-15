@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Shogi.Pieces;
 using Microsoft.Xna.Framework.Content;
+using Shogi.Utils;
 
 namespace Shogi.Rendering
 {
@@ -23,7 +24,8 @@ namespace Shogi.Rendering
 
         // Constants for the color of the board cells
         private readonly Color CELL_COLOR_BASE = new(183, 141, 95); // beige
-        private readonly Color CELL_COLOR_SELECTED = new(255, 255, 0, 10); // semi-transparent yellow
+        private readonly Color CELL_COLOR_SELECTED = new(207, 173, 95); // yellow
+        private readonly Color CELL_COLOR_MOVEMENT = new(60, 186, 68); // green
         #endregion
 
         #region Attributes
@@ -48,6 +50,8 @@ namespace Shogi.Rendering
 
         // Dictionary to store textures used for rendering  
         private readonly Dictionary<string, Texture2D> boardTextures = [];
+
+        private HashSet<Vector2> _possibleMoves = [];
         #endregion
 
         #region Initialization
@@ -124,15 +128,28 @@ namespace Shogi.Rendering
                     // Invert the cell X position to match the board orientation
                     cellX = BOARD_SIZE - 1 - cellX;
 
-                    if (selectedCell.Equals(new Vector2(cellX, cellY)) || _gameBoard.GetPieceAt(cellX, cellY) == null)
+                    System.Diagnostics.Debug.WriteLine($"CELL: {cellX}, {cellY}");
+                    if (_possibleMoves.Contains(new Vector2(cellX, cellY)))
                     {
-                        // Deselect the cell if it was already selected
-                        selectedCell = null;
+                        MovePiece(_gameBoard.GetPieceAt((int)selectedCell.Value.X, (int)selectedCell.Value.Y), new Vector2(cellX, cellY));
+                        Piece piece = _gameBoard.GetPieceAt(cellX, cellY);
+                        if (IsPromotionZone(new Vector2(cellX, cellY), piece.InvertedDirection) && piece.IsPromotable)
+                        {                    
+                                piece.Promote();
+                        }
                     }
                     else
                     {
-                        // Update the selected cell accordingly
-                        selectedCell = new(cellX, cellY);
+                        if (selectedCell.Equals(new Vector2(cellX, cellY)) || _gameBoard.GetPieceAt(cellX, cellY) == null)
+                        {
+                            // Deselect the cell if it was already selected
+                            selectedCell = null;
+                        }
+                        else
+                        {
+                            // Update the selected cell accordingly
+                            selectedCell = new(cellX, cellY);
+                        }
                     }
                 }
             } 
@@ -142,11 +159,21 @@ namespace Shogi.Rendering
             }
         }
 
+        private void MovePiece(Piece piece, Vector2 position)
+        {
+            System.Diagnostics.Debug.WriteLine($"MOVE PIECE: {piece.Position} -> {position}");
+            if (selectedCell.HasValue)
+            {
+                _gameBoard.MovePiece(piece, (int)position.X, (int)position.Y);
+                selectedCell = null;
+            }
+        }
+
         /// <summary>
         /// Highlight the selected cell
         /// </summary>
         /// <param name="position">Cell Position</param>
-        private void DrawSelectedCell(Vector2 position)
+        private void DrawSelectedCell(Vector2 position, Color color)
         {
             // Disegna un overlay semi-trasparente per evidenziare la cella selezionata
             if (!boardTextures.TryGetValue("highlight", out Texture2D value))
@@ -155,7 +182,7 @@ namespace Shogi.Rendering
                 Color[] data = new Color[CELL_SIZE * CELL_SIZE];
                 for (int i = 0; i < data.Length; i++)
                 {
-                    data[i] = CELL_COLOR_SELECTED; // giallo semi-trasparente
+                    data[i] = color; // giallo semi-trasparente
                 }
                 highlight.SetData(data);
                 value = highlight;
@@ -176,6 +203,25 @@ namespace Shogi.Rendering
                    point.X < boardPosition.X + BOARD_SIZE * CELL_SIZE &&
                    point.Y >= boardPosition.Y &&
                    point.Y < boardPosition.Y + BOARD_SIZE * CELL_SIZE;
+        }
+
+        private bool IsValidPosition(Vector2 movePosition)
+        {
+            return movePosition.X >= boardPosition.X &&
+                   movePosition.X < boardPosition.X + BOARD_SIZE * CELL_SIZE &&
+                   movePosition.Y >= boardPosition.Y &&
+                   movePosition.Y < boardPosition.Y + BOARD_SIZE * CELL_SIZE;
+        }
+
+        /// <summary>
+        /// Check if the piece is in the promotion zone
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="invDir"></param>
+        /// <returns></returns>
+        private bool IsPromotionZone(Vector2 position, bool invDir)
+        {
+            return invDir? (position.Y <= BOARD_SIZE - 1 && position.Y >= BOARD_SIZE - 3) : (position.Y >= 0 && position.Y <= 2);
         }
         #endregion
 
@@ -206,15 +252,78 @@ namespace Shogi.Rendering
                         BOARD_SIZE - 1 - x == selectedCell.Value.X &&
                         y == selectedCell.Value.Y)
                     {
-                        DrawSelectedCell(position);
+                        DrawSelectedCell(position, CELL_COLOR_SELECTED);
                     }
+
                 }
+            }
+
+            if (selectedCell.HasValue)
+            {
+                DrawPossibleMoves(_gameBoard.GetPieceAt((int)selectedCell.Value.X, (int)selectedCell.Value.Y));
+            }
+            else
+            {
+                _possibleMoves.Clear();
             }
 
             // Draw the pieces on the board
             DrawPieces();
 
             spriteBatch.End();
+        }
+
+        /// <summary>
+        /// Draw the possible moves for a piece
+        /// </summary>
+        /// <param name="piece"> Piece to draw the possible moves for the given piece </param>
+        private void DrawPossibleMoves(Piece piece)
+        {
+            if (piece == null)
+            {
+                return;
+            }
+            // Calculate the position of the piece on the board
+            Vector2 position = new(
+                boardPosition.X + (BOARD_SIZE - 1 - piece.Position.X) * CELL_SIZE,
+                boardPosition.Y + piece.Position.Y * CELL_SIZE
+            );
+
+            var possibleMoves = piece.IsPromoted ? piece.PromotedPossibleMoves: piece.PossibleMoves;
+
+            // Draw the possible moves for the piece
+            foreach (Movement move in possibleMoves)
+            {
+                int i = 1;
+                do
+                {
+                    Vector2 movePosition = position + new Vector2(move.Direction.X * CELL_SIZE * i, move.Direction.Y * CELL_SIZE * i);
+
+                    Piece currentPiece = _gameBoard.GetPieceAt(
+                        (int)(selectedCell.Value.X - move.Direction.X * i),
+                        (int)(selectedCell.Value.Y + move.Direction.Y * i));
+
+                    if (currentPiece != null && (currentPiece.InvertedDirection == piece.InvertedDirection))
+                    {
+                        break;
+                    }
+                    else
+                    { 
+                        if (IsValidPosition(movePosition))
+                        {
+                            _possibleMoves.Add(new(BOARD_SIZE - (int)movePosition.X / CELL_SIZE, (int)movePosition.Y / CELL_SIZE));
+                            spriteBatch.Draw(cellTexture, movePosition, CELL_COLOR_MOVEMENT);
+                            DrawCellBorder(movePosition);
+                        }
+                    }
+                    if (currentPiece != null && (currentPiece.InvertedDirection != piece.InvertedDirection))
+                    {
+                        break;
+                    }
+
+                    i++;
+                } while(i <= move.Repetitions);
+            }
         }
 
         /// <summary>
@@ -248,8 +357,11 @@ namespace Shogi.Rendering
         /// <param name="color">Line color</param>
         private void DrawLine(Vector2 start, Vector2 end, Color color)
         {
+            // Calculate the edge of the line and its angle
             Vector2 edge = end - start;
             float angle = (float)Math.Atan2(edge.Y, edge.X);
+
+            // Calculate the length of the line
             float length = edge.Length();
 
             if (!boardTextures.TryGetValue("line", out Texture2D value))

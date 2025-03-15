@@ -23,7 +23,8 @@ class Knight : Piece
 
         PossibleMoves =
         [
-            // TODO: Implement Knight movement
+            new(Movement.KnightRight, invertedDirection),
+            new(Movement.KnightLeft, invertedDirection)
         ];
 
         PromotedPossibleMoves =
