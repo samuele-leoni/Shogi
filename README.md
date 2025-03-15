@@ -25,8 +25,7 @@ I used Visual Studio Community 2022 and C# with MonoGame to create this project.
 
 # Future Work
 
-{Make a list of things that you need to fix, improve, and add in the future.}
-
-- Item 1
-- Item 2
-- Item 3
+- Menu implementation
+- Language switch
+- Turn logic
+- Promotion Dialog
