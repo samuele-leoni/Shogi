@@ -6,9 +6,7 @@ This is a simple 2d implementation of Shogi using MonoGame. The game is played o
 
 This projects goal is to showcase my programming skills as well as my understanding of the C# programming language.
 
-{Provide a link to your YouTube demonstration. It should be a 4-5 minute demo of the software running and a walkthrough of the code. Focus should be on sharing what you learned about the language syntax.}
-
-[Software Demo Video](http://youtube.link.goes.here)
+[Software Demo Video](https://youtu.be/9K1sRAo-ga8)
 
 # Development Environment
 
